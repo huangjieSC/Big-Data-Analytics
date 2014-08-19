@@ -1,0 +1,138 @@
+
+#Name: Jie Huang
+
+####################################################################
+#Problem 1  
+#Find the mean departure delay by month. 
+
+map1 = function(k,flights) {
+     return ( keyval(as.numeric(flights[[2]]),flights[[16]]))
+}
+
+reduce1 = function(month, delays) {
+     keyval(month, mean(delays,na.rm=TRUE))
+}
+
+mr1 = function(input, output = NULL) {
+     mapreduce(input = input,
+     output = output,
+     input.format = make.input.format("csv", sep=","),
+     map = map1,
+     reduce = reduce1)}
+	 
+hdfs.root = '/user/huang48'
+hdfs.data = file.path(hdfs.root,'2004.csv')
+hdfs.out = file.path(hdfs.root,'outTakeHomeProb1')
+out = mr1(hdfs.data, hdfs.out)
+
+results1 = from.dfs(out)
+results1.df = as.data.frame(results1, stringsAsFactors=F)
+colnames(results1.df) = c('Month', 'Mean Departure Delay')
+results1.df
+plot(results1$key,results1$val,xlab='Month',ylab='Mean Departure Delay')
+
+################################################################################
+#Problem 2  
+#Find the mean departure delay by origin airport.
+
+map2 = function(k,flights) {
+	return ( keyval(as.character(flights[[17]]),flights[[16]]))
+}
+reduce2 = function(origin, delays) {
+     keyval(origin, mean(delays,na.rm=TRUE))
+}
+mr2 = function(input, output = NULL) {
+     mapreduce(input = input,
+     output = output,
+     input.format = make.input.format("csv", sep=","),
+     map = map2,
+     reduce = reduce2)
+}
+	 
+hdfs.root = '/user/huang48'
+hdfs.data = file.path(hdfs.root,'2004.csv')
+hdfs.out = file.path(hdfs.root,'outTakeHomeProb2')
+out = mr2(hdfs.data, hdfs.out) 
+ 
+results2 = from.dfs(out)
+results2.df = as.data.frame(results2, stringsAsFactors=F)
+colnames(results2.df) = c('Origin', 'Mean Departure Delay')
+results2.df
+
+################################################################################
+#Problem 3  
+#Find the mean arrival delay by destination airport. 
+
+map3 = function(k,flights) {
+     return ( keyval(as.character(flights[[18]]),flights[[15]]))
+}
+reduce3 = function(destination, delays) {
+     keyval(destination, mean(delays,na.rm=TRUE))
+}
+mr3 = function(input, output = NULL) {
+     mapreduce(input = input,
+     output = output,
+     input.format = make.input.format("csv", sep=","),
+     map = map3,
+     reduce = reduce3)
+}
+	 
+hdfs.root = '/user/huang48'
+hdfs.data = file.path(hdfs.root,'2004.csv')
+hdfs.out = file.path(hdfs.root,'outTakeHomeProb3')
+out = mr3(hdfs.data, hdfs.out)
+
+results3 = from.dfs(out)
+results3.df = as.data.frame(results3, stringsAsFactors=F)
+colnames(results3.df) = c('Destination', 'Mean Arrival Delay')
+results3.df
+
+############################################################################
+#Problem 4  
+#Find the mean delay by airport. Do this by combining the results from your solutions to Problem2 and 
+Problem3. My suggestion is that you solve this problem entirely in R using your earlier results from problems 2 
+& 3 (no need to redo those results). You should create a data frame in which: 
+• column 1 consists of all of the airports from Problem 2, 
+• column 2 is the mean of the delays from Problem2 and Problem3 for the corresponding airport. If an 
+airport appears only in Problem2 or if the entry from Problem 3 is "NaN", then take mean departure 
+delay as the mean delay from Problem 2. If an airport appears only in Problem3, then ignore it.
+
+myfunc<-function(df1,df2){
+     found<-FALSE
+     df<-data.frame(t(rep(NA,2)))
+     colnames(df) = c('Airport', 'Mean Delay')
+     
+     for(i in 1:nrow(df1)){                
+         for(k in 1:nrow(df2)){
+             if(grepl(df1[[i,1]],df2[[k,1]])){    
+                 if(!is.nan(df2[[k,2]])){
+                     r<-(df1[[i,2]]+df2[[k,2]])/2
+                 }
+                 else{
+                    r=df1[[i,2]]
+					print("Airport which is NaN in r3 ")
+					print(k)
+					print("Airport which is NaN in r3 but has matching airport in r2 ")
+					print(i)
+                 }
+                 
+                 df[i,1]<-df1[[i,1]]
+                 df[i,2]<-r
+                 found<-TRUE
+                 break			
+             }
+         }
+         
+         if(!found){
+             r=df1[[i,2]]
+             df[i,1]<-df1[[i,1]]
+             df[i,2]<-r
+			print("Airport which is not in r3 ")
+			print(i)
+         }	    
+     }
+    return(df)
+}
+
+result<-myfunc(results2,results3)
+result
